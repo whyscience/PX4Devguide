@@ -1,48 +1,48 @@
-# Using the ecl EKF
+# 使用 ecl EKF
 
-This tutorial answers common questions about use of the ECL EKF algorithm.
+本节教程回答了使用 ECL EKF 算法相关的常见问题。
 
-## What is the ecl EKF?
+## 什么是 ecl EKF?
 
-The ECL \(Estimation and Control Library\) uses an Extended Kalman Filter algorithm to process sensor measurements and provide an estimate of the following states:
+ECL \(Estimation and Control Library，估计和控制库\) 使用扩展卡尔曼滤波算法来处理传感器测量值并提供以下状态的估计:
 
-* Quaternion defining the rotation from North, East, Down local earth frame to X,Y,Z body frame
-* Velocity at the IMU - North,East,Down \(m/s\)
-* Position at the IMU - North,East,Down \(m\)
-* IMU delta angle bias estimates - X,Y,Z \(rad\)
-* IMU delta velocity bias estimates - X,Y,Z\(m/s\)
-* Earth Magnetic field components - North,East,Down \(gauss\)
-* Vehicle body frame magnetic field bias - X,Y,Z \(gauss\)
-* Wind velocity - North,East \(m/s\)
+* 四元数，定义了从North（北），East（东），Down（地）地球坐标系到X，Y，Z机体坐标系的旋转。
+* IMU中的速度 - North,East,Down \(m/s\)
+* IMU中的位置 - North,East,Down \(m\)
+* IMU 角度增量偏差（bias）估计 - X,Y,Z \(rad\)
+* IMU 速度增量偏差（bias）估计 - X,Y,Z\(m/s\)
+* 地球磁场分量 - North,East,Down \(gauss\)
+* 机体坐标系磁场偏差 - X,Y,Z \(gauss\)
+* 风速 - North,East \(m/s\)
 
-The EKF runs on a delayed 'fusion time horizon' to allow for different time delays on each measurement relative to the IMU. Data for each sensor is FIFO buffered and retrieved from the buffer by the EKF to be used at the correct time. The delay compensation for each sensor is controlled by the EKF2\_\*\_DELAY parameters.
+EKF在一个延迟的‘融合时间范围（fusion time horizon）’内工作，这是考虑到涉及到IMU的每个测量的时间延迟不同。每个传感器的数据是以FIFO（先进先出）形式缓存的，然后被EKF取出在正确的时间使用。EKF2\_\*\_DELAY 控制了每个传感器的延时补偿。
 
-A complementary filter is used to propagate the states forward from the 'fusion time horizon' to current time using the buffered IMU data. The time constant for this filter is controlled by the EKF2\_TAU\_VEL and EKF2\_TAU\_POS parameters.
+互补滤波用于将状态从‘融合时间范围’向当前时间推进，它使用IMU的数据。互补滤波的时间常数由参数EKF2\_TAU\_VEL 和 EKF2\_TAU\_POS控制。
 
-Note: The 'fusion time horizon' delay and length of the buffers is determined by the largest of the EKF2\_\*\_DELAY parameters. If a sensor is not being used, it is recommended to set its time delay to zero. Reducing the 'fusion time horizon' delay reduces errors in the complementary filter used to propagate states forward to current time.
+注意：‘融合时间范围’的延迟和缓存的长度由 EKF2\_\*\_DELAY 中的最大值决定。如果一个传感器没有被使用，推荐将其时间延迟设置为0。降低‘融合时间范围’的延迟就降低了互补滤波中用于将状态推荐到当前时间的误差（error）。
 
-The position and velocity states are adjusted to account for the offset between the IMU and the body frame before they are output to the control loops. The position of the IMU relative to the body frame is set by the EKF2\_IMU\_POS\_X,Y,Z parameters.
+位置和速度状态在被输出至控制回路之前，需要调整以说明IMU和机体坐标系的偏移（offset）。IMU相对于机体坐标系的位置可由参数 EKF2\_IMU\_POS\_X,Y,Z 设置。
 
-The EKF uses the IMU data for state prediction only. IMU data is not used as an observation in the EKF derivation. The algebraic equations for the covariance prediction, state update and covariance update were derived using the Matlab symbolic toolbox and can be found here: [Matlab Symbolic Derivation](https://github.com/PX4/ecl/blob/master/matlab/scripts/Inertial%20Nav%20EKF/GenerateNavFilterEquations.m)
+EKF使用IMU仅用于状态预测。在EKF推到中IMU没有被用作观测量。协方差预测、状态更新和协方差更新的代数方程由 Matlab symbolic toolbox 生成，可以在这里找到: [Matlab Symbolic Derivation](https://github.com/PX4/ecl/blob/master/matlab/scripts/Inertial%20Nav%20EKF/GenerateNavFilterEquations.m)
 
-## What sensor measurements does it use?
+## 使用了什么传感器测量量？
 
-The EKF has different modes of operation that allow for different combinations of sensor measurements. On start-up the filter checks for a minimum viable combination of sensors and after initial tilt, yaw and height alignment is completed, enters a mode that provides rotation, vertical velocity,  vertical position, IMU delta angle bias and IMU delta velocity bias estimates.
+EKF包含了不同的操作模式，考虑到了不同的传感器测量值得组合。在启动时，滤波器检测最小可用传感器组合，在初始倾斜、偏航和高度校准完成后，进入了一个提供旋转、垂直速度、垂直位置、IMU角度增量偏差和IMU速度增量偏离估计的模式。
 
-This mode requires IMU data, a source of yaw \(magnetometer or external vision\) and a source of height data. This minimum data set is required for all EKF modes of operation. Other sensor data can then be used to estimate additional states.
+这个模式需要IMU数据、一个偏航数据来源\(磁力计或者外部视觉信息\)和一个高度数据来源。所有EKF操作模式都需要这个最小数据集。其他传感器数据可用于估计其他的状态。
 
 ### IMU
 
-* Three axis body fixed Inertial Measurement unit delta angle and delta velocity data at a minimum rate of 100Hz. Note: Coning corrections should be applied to the IMU delta angle data before it is used by the EKF.
+* 机体三轴固连的惯性测量单元（Inertial Measurement unit）以最低100Hz提供角度增量和速度增量的数据。注意：在IMU角度增量数据被EKF使用之前应进行锥进修正。
 
-### Magnetometer
+### 磁力计
 
-Three axis body fixed magnetometer data \(or external vision system pose data\) at a minimum rate of 5Hz is required. Magnetometer data can be used in two ways:
+三轴机体固连的磁力计数据（或者外部视觉系统姿态数据）要求至少以5Hz更新。磁力计数据可用以下两种方式使用：
 
-* Magnetometer measurements are converted to a yaw angle using the tilt estimate and magnetic declination. This yaw angle is then used as an observation by the EKF. This method is less accurate and does not allow for learning of body frame field offsets, however it is more robust to magnetic anomalies and large start-up gyro biases. It is the default method used during start-up and on ground.
-* The  XYZ magnetometer readings are used as separate observations. This method is more accurate and allows body frame offsets to be learned, but assumes the earth magnetic field environment only changes slowly and performs less well when there are significant external magnetic anomalies. It is the default method when the vehicle is airborne and has climbed past 1.5 m altitude.
+* 使用倾斜估计和磁力计偏差可将磁力计测量值转换为偏航角。这个偏航角接着被EKF用作观测量。这个方法更不准确而且没有考虑到机体坐标系磁场偏移，但是它对磁场异常和启动时大的陀螺仪偏差更加健壮（robust）。这是在启动时和在地面上时使用的默认方法。
+* XYZ 磁力计读数被用做独立的观测量。这个方法更加准确而且允许习得机体坐标系磁场偏移，但是需假设地球磁场环境缓慢变化而且在有明显外部磁场干扰的时候表现欠佳。飞机在空中或者爬升超过1.5m高度之后默认使用这个方法。
 
-The logic used to select the mode is set by the EKF2\_MAG\_TYPE parameter.
+选择模式的逻辑由参数 EKF2\_MAG\_TYPE 设置。
 
 ### Height
 

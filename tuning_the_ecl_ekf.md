@@ -192,7 +192,7 @@ EKF 输出、状态（state）和状态（status）数据被发布到一系列�
 
 ### EKF 误差
 
-EKF对于糟糕状态下的状态和协方差更新内置了误差检测。 参考 filter\_fault\_flags ，位于 [estimator\_status](https://github.com/PX4/Firmware/blob/master/msg/estimator_status.msg)。
+EKF对于恶劣状态下的状态和协方差更新内置了误差检测。 参考 filter\_fault\_flags ，位于 [estimator\_status](https://github.com/PX4/Firmware/blob/master/msg/estimator_status.msg)。
 
 ### 观测误差
 
@@ -221,7 +221,7 @@ EKF对于糟糕状态下的状态和协方差更新内置了误差检测。 参�
 
 ### EKF 数值误差
 
-为了降低对处理器的要求，对所有的运算EKF使用单精度浮点类型，对协方差预测和更新方程使用一阶近似。这意味着当重新调试EKF时有可能遇到异常情况，在其中协方差矩阵操作条件变得很糟糕以至于导致状态估计中产生发散或者明显的误差。
+为了降低对处理器的要求，对所有的运算EKF使用单精度浮点类型，对协方差预测和更新方程使用一阶近似。这意味着当重新调试EKF时有可能遇到异常情况，在其中协方差矩阵操作条件变得很恶劣以至于导致状态估计中产生发散或者明显的误差。
 
 为了阻止这个，每一个协方差和状态更新步骤包含以下误差检测和修正步骤：
 
@@ -244,87 +244,86 @@ EKF高度在飞行中远离GPS和高度计测量值，最常见原因是震动�
 
 推荐第一步使用一个有效的隔离安装系统确保飞控与机架隔离。一个隔离底座具有6个自由度，因此有6个共振频率。作为通用规则，安装在隔离底座上的飞控的的6个共振频率应该大于25Hz以避免与飞控动力学的交叉，并且低于点击的频率。
 
-如果共振频率与点击或螺旋桨的转动频率重合，隔离底座只会使得振动情况更加糟糕。
+如果共振频率与点击或螺旋桨的转动频率重合，隔离底座只会使得振动情况更加恶劣。
 
-通过The EKF can be made more resistant to vibration induced height divergence by making the following parameter changes:
+通过进行以下参数修改，EKF可以变得对于震动引起的高度发散更加具有抵抗力：
 
-* Double the value of the innovation gate for the primary height sensor. If using barometeric height this is EK2\_EKF2\_BARO\_GATE.
-* Increase the value of EKF2\_ACC\_NOISE to 0.5 initially. If divergence is still occurring,   increase in further increments of 0.1 but do not go above 1.0
+* 加倍主要高度传感器的新息阈值。如果使用的是气压计高度对应的就是EK2\_EKF2\_BARO\_GATE。
+* 开始时提高EKF2\_ACC\_NOISE的数值到0.5。如果发散还是会出现，每次增加0.1，但是不要超过1.0。
 
-Note that the effect of these changes will make the EKF more sensitive to errors in GPS vertical velocity and barometric pressure.
+注意这些改变会使得EKF对于GPS垂直速度和气压更加敏感。
 
-## What should I do if the position estimate is diverging?
+## 如果位置估计发散该怎么办？
 
-The most common causes of position divergence are:
+位置发散最常见的原因如下：
 
-* High vibration levels. 
-  * Fix by improving mechanical isolation of the autopilot.
-  * Increasing the value of EKF2\_ACC\_NOISE and EKF2\_GYR\_NOISE can help, but does make the EKF more vulnerable to GPS glitches.
-* Large gyro bias offsets. 
-  * Fix by re-calibrating the gyro. Check for excessive temperature sensitivity \(&gt; 3 deg/sec bias change during warm-up from a cold start and replace the sensor if affected of insulate to to slow the rate of temeprature change.
-* Bad yaw alignment
-  * Check the magntometer calibration and alignment.
-  * Check the heading shown QGC is within within 15 deg truth
-* Poor GPS accuracy
-  * Check for interference
-  * Improve separation and shielding
-  * Check flying location for GPS signal obstructions and reflectors \(nearboy tall buildings\)
-* Loss of GPS
+* 高振动水平。
+  * 通过提升飞控的机械隔离水平。
+  * 提高 EKF2\_ACC\_NOISE 和 EKF2\_GYR\_NOISE 的数值会有效，但是会使得EKF更易受小故障的干扰。
+* 大的陀螺仪偏差的偏移。
+  * 通过重新校准陀螺仪来修正。检查过量的温度灵敏性（在从冷启动逐渐加热的过程中存在&gt; 3 deg/sec的偏差变化），并且如果收到影响就替换传感器以降低随着温度变化的变化速率。
+* 糟糕的偏航校准
+  * 检查磁力计的校正和对齐。
+  * 检查QGC中显示朝向与真实朝向偏差在15度以内。
+* 质量很差的GPS精度
+  * 检查干扰
+  * 提升隔离和屏蔽
+  * 检查飞行位置是否有GPS信号阻碍或者反射（接近高楼大厦）
+* GPS信号丢失
 
-Determining which of these is the primary cause requires a methodical approach to analysis of the EKF log data:
+确定哪一个是主要因需需要系统的方法来分析EKF日志数据:
 
-* Plot the velocty innovation test ratio - [estimator\_status](https://github.com/PX4/Firmware/blob/master/msg/estimator_status.msg).vel\_test\_ratio
-* Plot the horizontal position innovation test ratio - [estimator\_status](https://github.com/PX4/Firmware/blob/master/msg/estimator_status.msg)。pos\_test\_ratio
-* Plot the height innovation test ratio - [estimator\_status](https://github.com/PX4/Firmware/blob/master/msg/estimator_status.msg).hgt\_test\_ratio
-* Plot the magnetoemrer innovation test ratio - [estimator\_status](https://github.com/PX4/Firmware/blob/master/msg/estimator_status.msg).mag\_test\_ratio
-* Plot the GPS receier reported speed accuracy - [vehicle\_gps\_position](https://github.com/PX4/Firmware/blob/master/msg/vehicle_gps_position.msg).s\_variance\_m\_s
-* Plot the IMU delta angle state estimates - [estimator\_status](https://github.com/PX4/Firmware/blob/master/msg/estimator_status.msg).states\[10\], states\[11\] and states\[12\]
-* Plot the EKF internal high frequency vibration metrics:
-  * Delta angle coning vibration - [estimator\_status](https://github.com/PX4/Firmware/blob/master/msg/estimator_status.msg).vibe\[0\]
-  * High frequency delta angle vibration - [estimator\_status](https://github.com/PX4/Firmware/blob/master/msg/estimator_status.msg).vibe\[1\]
-  * High frequency delta velocity vibration - [estimator\_status](https://github.com/PX4/Firmware/blob/master/msg/estimator_status.msg).vibe\[2\]
+* 画出速度新息测试比曲线 - [estimator\_status](https://github.com/PX4/Firmware/blob/master/msg/estimator_status.msg).vel\_test\_ratio
+* 画出水平位置新息比曲线 - [estimator\_status](https://github.com/PX4/Firmware/blob/master/msg/estimator_status.msg)。pos\_test\_ratio
+* 画出高度新息比曲线 - [estimator\_status](https://github.com/PX4/Firmware/blob/master/msg/estimator_status.msg).hgt\_test\_ratio
+* 画出磁力计新息比曲线 - [estimator\_status](https://github.com/PX4/Firmware/blob/master/msg/estimator_status.msg).mag\_test\_ratio
+* 画出GPS报告的速度精度曲线 - [vehicle\_gps\_position](https://github.com/PX4/Firmware/blob/master/msg/vehicle_gps_position.msg).s\_variance\_m\_s
+* 画出IMU角度增量状态估计曲线 - [estimator\_status](https://github.com/PX4/Firmware/blob/master/msg/estimator_status.msg).states\[10\], states\[11\] and states\[12\]
+* 画出EKF内置的高频振动度量：
+  * 角度增量锥进振动 - [estimator\_status](https://github.com/PX4/Firmware/blob/master/msg/estimator_status.msg).vibe\[0\]
+  * 高频角度增量振动 - [estimator\_status](https://github.com/PX4/Firmware/blob/master/msg/estimator_status.msg).vibe\[1\]
+  * 高频速度增量振动 - [estimator\_status](https://github.com/PX4/Firmware/blob/master/msg/estimator_status.msg).vibe\[2\]
 
-During normal operation, all the test ratios should remain below 0.5 with only occasional spikes above this as shown in the example below from a successful flight:  
-![Position, Velocity, Height and 磁力计 Test Ratios](Screen Shot 2016-12-02 at 9.20.50 pm.png)  
-The following plot shows the EKF vibration metrics for a multirotor with good isolation. The landing shock and the increased vibration during takeoff and landing can be seen. Insufficient data has been gathered with these metrics to provide specific advice on maximum thresholds.  
+常规操作期间，搜所有的测试比例应该保持在0.5以下，只是偶尔会出现尖峰，如下面一次顺利的飞行中的例子所示：
+![Position, Velocity, Height and Magnetometer Test Ratios](Screen Shot 2016-12-02 at 9.20.50 pm.png)  
+下图显示了一台减震良好的多轴飞行器的EKF振动度量。可以看到起飞和降落过程中的着陆冲击和升高的振动。要提供关于最大阈值的相关建议，这些数据还不足够。
 ![](Screen Shot 2016-12-02 at 10.24.00 pm.png)  
-The above vibration metrics are of limited value as the presence of vibration at a frequency close to the IMU sampling frequency \(1 kHz for most boards\) will cause  offsets to appear in the data that do not show up in the high frequency vibration metrics. The only way to detect aliasing errors is in their effect on inertial navigation accuracy and the rise in innovation levels.
+以上振动度量价值有限，因为振动出现在了IMU采样频率（对于大多数飞控板而言是1 kHz）附近，这将导致高频振动度量中不会出现的偏移出现在数据之中。唯一的探测混淆误差的方式是在观察到它们影响惯性导航系统精度和导致新息水平提升。
 
-In addition to generating large position and velocity test ratios of &gt; 1.0, the different error mechanisms affect the other test ratios in different ways:
+除了产生&gt; 1.0的位置和速度测试比，不同的误差机理也会以不同的方式影响其他测试比：
 
-### Determination of Excessive Vibration
+### 确定超量振动
 
-High vibration levels normally affect vertical position and velocity innovations as well as the horizontal components. 磁力计 test levels are only affected to a small extent.
+高振动水平通常影响垂直位置和速度新息还有水平分量。磁力计测试水平只受到很小程度的影响。
 
-\(insert example plots showing bad vibration here\)
+\(此处需要插入显示恶劣振动的示意图/insert example plots showing bad vibration here\)
 
-### Determination of Excessive Gyro Bias
+### 确定过量的陀螺仪偏差
 
-Large gyro bias offsets are normally characterised by a change in the value of delta angle bias greater than 5E-4 during flight \(equivalent to ~3 deg/sec\) and can also cause a large increase in the 磁力计 test ratio if the yaw axis is affected. Height is normally unaffected other than extreme cases. Switch on bias value of up to 5 deg/sec can be tolerated provided the filter is given time time settle before flying . Pre-flight checks performed by the commander should prevent arming if the position is diverging.
+大的陀螺仪偏差偏移量通常特征是飞行中角度增量偏差的数值大于5E-4（相当于~3 deg/sec），如果偏航轴受到影响也会导致磁力计测试比的大大提高。除非是极端情形，高度通常不会受到影响。如果滤波器在飞行前有时间收敛，把偏差值提高至5 deg/sec也是可以承受的。如果位置发散，commander进行的飞行前检查应当阻止解锁。
 
-\(insert example plots showing bad gyro bias here\)
+\(此处需要插入显示恶劣陀螺仪偏差的示意图/insert example plots showing bad gyro bias here\)
 
-### Determination of Poor Yaw Accuracy
+### 确定糟糕的偏航精度
 
-Bad yaw alignment causes a velocity test ratio that increases rapidly when the vehicle starts moving due inconsistency in the direction of velocity calculated by the inertial nav and the  GPS measurement. 磁力计 innovations are slightly affected. Height is normally unaffected.
+当飞行器开始在惯导系统和GPS测量值计算出来的速度方向内不连续的移动时，恶劣的偏航校准导致速度测试比迅速增加。磁力计新息受到轻微影响。高度通常不受影响。
 
-\(insert example plots showing bad yaw alignment here\)
+\(此处需要插入显示恶劣的偏航校准的示意图/insert example plots showing bad yaw alignment here\)
 
-### Determination of Poor GPS Accuracy
+### 确定糟糕的GPS精度
 
-Poor GPS accuracy is normally accompanied by a rise in the reported velocity error of the receiver in conjunction with a rise in innovations. Transient errors due to multipath, obscuration and interference are more common causes. Here is an example of a temporary loss of GPS accuracy where the multi-rotor started drifting away from its loiter location and had to be corrected using the sticks. The rise in [estimator\_status](https://github.com/PX4/Firmware/blob/master/msg/estimator_status.msg).vel\_test\_ratio to greater than 1 indicates the GPs velocity was inconsistent with other measurements and has been rejected.
+糟糕的GPS精度通常伴随着GPS接收器的报告速度误差的上升，连同新息的上升。多路径、遮蔽、干扰导致的瞬态误差是更常见的原因。这里有一个GPS精度突然丢失的示例，此时多旋翼开始漂移远离悬停位置且必须使用摇杆进行修正。 [estimator\_status](https://github.com/PX4/Firmware/blob/master/msg/estimator_status.msg).vel\_test\_ratio 上升到大于1暗示GPS速度与其他测量量不连续并已经被拒绝。
 
 ![](gps glitch - test ratios.png)
 
-This is accompanied with rise in the GPS receivers reported velocity accuracy which indicates that it was likely a GPS error.  
+这里伴随着GPS接收器报告速度精度的增加，这暗示着可能是一个GPS错误。
 ![](gps glitch - reported receiver accuracy.png)
 
-If we also look at the GPS horizontal velocity innovations and innovation variances, we can see the large spike in North velocity innovation that accompanies this GPS 'glitch' event.  
+如果我们也看看GPS水平速度新息和新息方差，就能看到伴随着GPS '失灵（glitch）' 事件，大的尖峰出现在北向速度新息。
 ![](gps glitch - velocity innovations.png)
 
-### Determination of GPS Data Loss
+### 确定GPS数据丢失
 
-Loss of GPS data will be shown by the velocity and position innvoation test ratios 'flat-lining'. If this occurs, check the oher GPS status data in vehicle\_gps\_position for further information.
-
-\(insert example plots showing loss of GPS data here\)
+GPS数据丢失将被速度和位置新息测试比'一蹶不振（flat-lining）'地显示出来。如果这个出现，检查 vehicle\_gps\_position 中的其他GPS状态数据找到更深入的信息。
+\(此处插入显示GPS数据丢失的示例图/insert example plots showing loss of GPS data here\)
 
